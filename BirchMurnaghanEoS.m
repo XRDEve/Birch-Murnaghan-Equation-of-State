@@ -8,14 +8,14 @@
 % @E.K.Tripoliti ucfbetr@ucl.ac.uk
 %
 % INPUT VARIABLES
-rng(9845, 'twister')                                                                                                    % For reproductivity; controls random number generation. 
+rng(9845, 'twister')                 % For reproductivity; controls random number generation. 
  P_exp = data(:,1); 
  V_exp = data(:,2);        
 error_V = data(:,3);    
-V_pred = min(V_exp)-100:1:max(V_exp)+10;                        V_pred = V_pred';  
+V_pred = min(V_exp)-100:1:max(V_exp)+10;     V_pred = V_pred';  
 %% SOLVE MODEL FOR THE 2ND-ORDER BMEoS
-% initial values for the unknown model parameters:
-% V0=x(1);                      KT0=x(2);                       
+% initial values for the unknown model parameters: V0, K0
+% V0=x(1);                      K0=x(2);                       
 x0 = [170 1600];
 xl = [100  0];
 xu = [1500 1800];
@@ -41,6 +41,7 @@ R2_2 = regress( P_exp, P2BMEoS_data);
 %%  SOLVE MODEL FOR THE 3RD ORDER BMEoS
 % unknown fitted parameters : K0, K'0, V0
 % initial values for the unknowns
+% V0=x(1);             K'0=x(2);           KT0=x(3);    
 m0 = [150 4 1500];
 mlb = [100 1 0];
 mub = [1500 6 1600];
@@ -75,16 +76,16 @@ BulkM = - V_exp(2:end).*(diff(P_exp))./(diff(V_exp));
 % P2BMEoS
 stress2 = -diff(V_pred)./(V_pred(2:end));
 strain2 = Kt_2nd.*stress2;
-f2 = (((x(2)./V_pred).^(2/3)) -1).^(1/2);                    % Eulerian srain
+f2 = (((x(2)./V_pred).^(2/3)) -1).^(1/2);                  % Eulerian srain
 F2 = P2BMEoS./3.*f2.*((2.*f2+1).^(5/2));                   % Normalized stress
 % P3BMEoS
 stress3 = -diff(V_exp)./(V_exp(2:end));
 strain3 = BulkM.*stress3;
 f3 =0.5.*(((m(3)./V_exp).^(2/3)) -1);                   % Eulerian finite strain
-F3 = P_exp./((3.*f3).*(((2.*f3)+1).^(5/2)));                   % Normalized pressure
+F3 = P_exp./((3.*f3).*(((2.*f3)+1).^(5/2)));            % Normalized pressure
 % extrapolations
 f33 =0.5.*(((m(3)./V_pred).^(2/3)) -1);                   % Eulerian finite strain
-F33 = P3BMEoS./((3.*f33).*(((2.*f33)+1).^(5/2)));                   % Normalized pressure
+F33 = P3BMEoS./((3.*f33).*(((2.*f33)+1).^(5/2)));         % Normalized pressure
 %K''0 from Anderson (1995)
 K_double_prime3 = (-1/m(1)).*((3-m(2)).*(4-m(2))+(35/9)); %for the 3rd-order
 K_double_prime2 = (-1/m(1)).*((3-4).*(4-4)+(35/9)); %for the 2nd-order
@@ -112,41 +113,41 @@ D3_2 = ((3/2)*m(1)).*(((m(3)./V_exp).^(7/3))-((m(3)./V_exp).^(5/3))).*(1+(3/4).*
 D3_3 = ((3/2)*m(1)).*((((m(3)*(1+0.001))./V_exp).^(7/3))-(((m(3)*(1+0.001))./V_exp).^(5/3))).*(1+(3/4).*(m(2)-4).*((((m(3)*(1+0.001))./V_exp).^(2/3))-1))./(m(3)*0.001);
 %
 % For weighted error use P_error = experimental, for equally weighted use P_error = 1.
-P_error = 1;                                                                                    % Change this if P_error from experiments is available
+P_error = 1;       % Change this if P_error from experiments is available
 % for P2BMEoS
-D2_11 = P_error.*(D2_1.^2);                 SD2_11 = sum(D2_11,'all');
-D2_12 =  P_error.*D2_1.*D2_2;             SD2_12 = sum(D2_12,'all');
+D2_11 = P_error.*(D2_1.^2);          SD2_11 = sum(D2_11,'all');
+D2_12 =  P_error.*D2_1.*D2_2;        SD2_12 = sum(D2_12,'all');
 %
-D2_22 = P_error.*(D2_2.^2);                 SD2_22 = sum(D2_22,'all');
+D2_22 = P_error.*(D2_2.^2);          SD2_22 = sum(D2_22,'all');
 %
 % aij & bij matrices
 aij2 = zeros(2,2);
 aij2(1,1) = SD2_11; aij2(1,2) = SD2_12; 
 aij2(2,1) = SD2_12; aij2(2,2) = SD2_22;
-bij2 = inv(aij2);                                                                                           % Inversion matrix
-Cij2 = corrcoef(bij2);                                                                                  % Correlation matrix 
-NoU2 = 2;                                                                                                    % Number of unknown variables in the model
+bij2 = inv(aij2);                                        % Inversion matrix
+Cij2 = corrcoef(bij2);                                   % Correlation matrix 
+NoU2 = 2;                                                % Number of unknown variables in the model
 % e.s.d 
 Error_2V0 = sqrt(bij2(1,1).*SSR2./(length(P_exp) - NoU2));
 Error_2KT0 = sqrt(bij2(2,2).*SSR2./(length(P_exp) - NoU2));
 % for P3BMEoS
-D3_11 = P_error.*(D3_1.^2);                 SD3_11 = sum(D3_11,'all');
-D3_12 =  P_error.*D3_1.*D3_2;             SD3_12 = sum(D3_12,'all');
-D3_13 =  P_error.*D3_1.*D3_3;             SD3_13 = sum(D3_13,'all');
+D3_11 = P_error.*(D3_1.^2);             SD3_11 = sum(D3_11,'all');
+D3_12 =  P_error.*D3_1.*D3_2;           SD3_12 = sum(D3_12,'all');
+D3_13 =  P_error.*D3_1.*D3_3;           SD3_13 = sum(D3_13,'all');
 %
-D3_22 = P_error.*(D3_2.^2);                 SD3_22 = sum(D3_22,'all');
-D3_23 = P_error.*D3_2.*D3_3;              SD3_23 = sum(D3_23,'all');
+D3_22 = P_error.*(D3_2.^2);             SD3_22 = sum(D3_22,'all');
+D3_23 = P_error.*D3_2.*D3_3;            SD3_23 = sum(D3_23,'all');
 %
-D3_33 = P_error.*D3_3.*D3_3;              SD3_33 = sum(D3_33,'all');
+D3_33 = P_error.*D3_3.*D3_3;            SD3_33 = sum(D3_33,'all');
 %
 % aij & bij matrices
 aij3 = zeros(3,3);
 aij3(1,1) = SD3_11; aij3(1,2) = SD3_12; aij3(1,3) = SD3_13;
 aij3(2,1) = SD3_12; aij3(2,2) = SD3_22; aij3(2,3) = SD3_23;
 aij3(3,1) = SD3_13; aij3(3,2) = SD3_23; aij3(3,3) = SD3_33;
-bij3 = inv(aij3);                                                                                           % Inversion matrix
-Cij3 = corrcoef(bij3);                                                                                  % Correlation matrix 
-NoU3 = 3;                                                                                                    % Number of unknown variables in the model
+bij3 = inv(aij3);                           % Inversion matrix
+Cij3 = corrcoef(bij3);                      % Correlation matrix 
+NoU3 = 3;                                   % Number of unknown variables in the model
 % e.s.d 
 Error_3KT0 = sqrt(bij3(1,1).*SSR3./(length(P_exp) - NoU3));
 Error_KT0_prime = sqrt(bij3(2,2).*SSR3./(length(P_exp) - NoU3));
@@ -161,44 +162,44 @@ display([' Error 3KT0:'     num2str(Error_3KT0)]);             display([' Error 
 %% PLOTTING 
 % Pressure & Volume
 figure(1)
-errorbar(P_exp, V_exp, error_V,  'ko','MarkerSize',6, 'linewidth',0.4, 'MarkerFaceColor','r')
+errorbar(P_exp, V_exp, error_V,  'ko','MarkerSize',5, 'linewidth',0.8, 'MarkerFaceColor','k')
 hold on
 plot(P2BMEoS, V_pred, 'k--','LineWidth',0.5)
 plot(P3BMEoS, V_pred, 'k-','LineWidth',0.5)
 xlim([min(P_exp) max(P_exp)])
-xlabel('Pressure (GPa)', 'FontWeight','bold')
-ylabel('V (Å^3)', 'FontWeight','bold')
-set(gca,'fontsize', 12,  'FontWeight','bold')
+xlabel('Pressure (GPa)', 'FontWeight','bold','fontsize', 12)
+ylabel('V (Å^3)', 'FontWeight','bold','fontsize', 12)
+set(gca,'fontsize', 13,  'FontWeight','bold')
 hold off
 
 % Stress & Volume
 figure(2)
-plot(f3, F3, 'ko','MarkerSize',6, 'linewidth',0.4, 'MarkerFaceColor','r')
+plot(f3, F3, 'ko','MarkerSize',5, 'linewidth',0.8, 'MarkerFaceColor','k')
 hold on
 plot(f33, F33, 'k--','LineWidth',0.5)
-xlabel('Eulerian Finite Strain, \itf_E', 'FontWeight','bold')
-ylabel('Normalized Stress, \itF_E', 'FontWeight','bold')
-set(gca,'fontsize', 12,  'FontWeight','bold')
+xlabel('Eulerian Finite Strain, \itf_E', 'FontWeight','bold','fontsize', 12)
+ylabel('Normalized Stress, \itF_E', 'FontWeight','bold','fontsize', 12)
+set(gca,'fontsize', 13,  'FontWeight','bold')
 hold off
 
 %Deformation Energy
 figure(3)
-plot(P_exp, DE, 'ko','MarkerSize',6, 'linewidth',0.4, 'MarkerFaceColor','r')
+plot(P_exp, DE, 'ko','MarkerSize',5, 'linewidth',0.8, 'MarkerFaceColor','k')
 hold on
 plot(P2BMEoS, DE2, 'k--','LineWidth',0.5)
-xlabel('Pressure (GPa)', 'FontWeight','bold')
-ylabel('Deformation Energy', 'FontWeight','bold')
-set(gca,'fontsize', 12,  'FontWeight','bold')
+xlabel('Pressure (GPa)', 'FontWeight','bold','fontsize', 12)
+ylabel('Deformation Energy', 'FontWeight','bold','fontsize', 12)
+set(gca,'fontsize', 13,  'FontWeight','bold')
 hold off
 
 % Pressure & Bulk Modulus
 figure(4)
-plot(P2BMEoS(2:end), Kt2,  'ko','MarkerSize',6, 'linewidth', 0.4, 'MarkerFaceColor','r')
+plot(P2BMEoS(2:end), Kt2,  'ko','MarkerSize',5, 'linewidth', 0.8, 'MarkerFaceColor','k')
 hold on
-plot(P3BMEoS(2:end), Kt3,  'ko','MarkerSize',6, 'linewidth', 0.4, 'MarkerFaceColor','b')
+plot(P3BMEoS(2:end), Kt3,  'ko','MarkerSize',5, 'linewidth', 0.8, 'MarkerFaceColor','b')
 xlim([min(P_exp) max(P_exp)])
-xlabel('Pressure (GPa)', 'FontWeight','bold')
-ylabel('K_T (GPa)', 'FontWeight','bold')
-set(gca,'fontsize', 12,  'FontWeight','bold')
+xlabel('Pressure (GPa)', 'FontWeight','bold','fontsize', 12)
+ylabel('K_T (GPa)', 'FontWeight','bold','fontsize', 12)
+set(gca,'fontsize', 13,  'FontWeight','bold')
 hold off
 %--------------------------------------------------------------------------
